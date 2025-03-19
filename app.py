@@ -8,6 +8,8 @@ import base64
 from werkzeug.utils import secure_filename
 from PIL import Image
 from dotenv import load_dotenv
+from exa_py import Exa
+import logging
 
 
 # 載入環境變數
@@ -526,6 +528,88 @@ def clear_history():
     except Exception as e:
         print(f"清空歷史記錄時出錯: {str(e)}")
         return jsonify({"error": "清空歷史記錄失敗"}), 500
+
+# 設置日誌
+logger = logging.getLogger(__name__)
+
+async def exa_search(query: str, num_results: int = 1, category: str = "web", search_type: str = "keyword") -> str:
+    """
+    使用 EXA Search API 進行網路搜索
+    
+    Args:
+        query (str): 搜索關鍵字
+        num_results (int): 返回結果數量，預設為5
+        category (str): 搜索類別，預設為"web"
+        search_type (str): 搜索類型，預設為"keyword"
+        
+    Returns:
+        str: 格式化的搜索結果
+    """
+    try:
+        # 檢查 API Key
+        exa_api_key = os.getenv("EXA_API_KEY")
+        if not exa_api_key:
+            return "錯誤：未設置 EXA_API_KEY"
+
+        # 初始化 Exa 客戶端
+        exa = Exa(api_key=exa_api_key)
+
+        # 執行搜索
+        search_response = exa.search_and_contents(
+            query,
+            text=True,
+            num_results=num_results,
+            category=category,
+            type=search_type
+        )
+
+        # 取得搜索結果
+        results = search_response.results
+
+        # 格式化結果
+        formatted_content = []
+        for result in results:
+            content = f"標題: {result.title if hasattr(result, 'title') else '無標題'}\n"
+            content += f"網址: {result.url if hasattr(result, 'url') else '無網址'}\n"
+            if hasattr(result, 'text'):
+                # 移除 HTML 標籤
+                import re
+                clean_text = re.sub(r'<[^>]+>', '', result.text)
+                content += f"內容:\n{clean_text}\n"
+            formatted_content.append(content)
+
+        return "\n---\n".join(formatted_content) if formatted_content else "無搜索結果"
+
+    except Exception as e:
+        logger.error(f"搜索過程中發生錯誤: {str(e)}")
+        return f"發生錯誤：{str(e)}"
+
+# 修改搜尋路由
+@app.route('/search', methods=['POST'])
+async def search():
+    data = request.json
+    query = data.get('query')
+    
+    if not query:
+        return jsonify({
+            'success': False,
+            'error': '搜尋關鍵字不能為空'
+        }), 400
+    
+    try:
+        # 調用 EXA 搜尋
+        search_result = await exa_search(query)
+        
+        return jsonify({
+            'success': True,
+            'result': search_result
+        })
+    except Exception as e:
+        logger.error(f"搜尋請求處理錯誤: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'搜尋處理失敗: {str(e)}'
+        }), 500
 
 if __name__ == '__main__':
     if not os.getenv("MISTRAL_API_KEY"):

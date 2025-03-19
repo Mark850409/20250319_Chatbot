@@ -77,12 +77,21 @@
 
             <div class="input-container">
                 <form id="chat-form" enctype="multipart/form-data" class="chat-input-form">
-                    <div class="deep-reasoning-wrapper">
-                        <input type="checkbox" class="deep-reasoning-toggle" id="deep-reasoning" name="deep_reasoning">
-                        <label class="deep-reasoning-btn" for="deep-reasoning">
-                            <i class="fas fa-brain"></i>
-                            <span>啟用深度推理</span>
-                        </label>
+                    <div class="toggles-wrapper">
+                        <div class="deep-reasoning-wrapper">
+                            <input type="checkbox" class="deep-reasoning-toggle" id="deep-reasoning" name="deep_reasoning">
+                            <label class="deep-reasoning-btn" for="deep-reasoning">
+                                <i class="fas fa-brain"></i>
+                                <span>啟用深度推理</span>
+                            </label>
+                        </div>
+                        <div class="search-wrapper">
+                            <input type="checkbox" class="search-toggle" id="search-mode" name="search_mode">
+                            <label class="search-btn" for="search-mode">
+                                <i class="fas fa-search"></i>
+                                <span>啟用搜尋模式</span>
+                            </label>
+                        </div>
                     </div>
                     
                     <div class="input-row">
@@ -174,6 +183,7 @@
         const imageUpload = document.getElementById('image-upload');
         const imagePreviewContainer = document.getElementById('image-preview-container');
         const deepReasoning = document.getElementById('deep-reasoning').checked;
+        const searchMode = document.getElementById('search-mode').checked;  // 獲取搜尋模式狀態
         const submitButton = this.querySelector('button[type="submit"]');
         const messagesContainer = document.getElementById('messages');
         
@@ -182,120 +192,173 @@
             return;
         }
         
-        const formData = new FormData();
-        formData.append('message', messageInput.value);
-        formData.append('deep_reasoning', deepReasoning);
-        
-        if (imageUpload.files.length > 0) {
-            formData.append('image', imageUpload.files[0]);
-            formData.append('image_size', document.getElementById('image-size').value);
-            formData.append('image_quality', document.getElementById('image-quality').value);
-        }
-        
         // 禁用輸入和按鈕
         messageInput.disabled = true;
         submitButton.disabled = true;
         
         try {
-            const response = await fetch('/chat', {
-                method: 'POST',
-                body: formData
-            });
+            let response;
             
-            const data = await response.json();
-            
-            if (data.error) {
-                console.error(data.error);
-                return;
-            }
-            
-            // 添加用戶消息
-            const userMessageHtml = `
-                <div class="message user-message">
-                    <div class="avatar">
-                        <i class="fas fa-user"></i>
+            // 根據模式選擇不同的 API 端點
+            if (searchMode) {
+                // 搜尋模式
+                response = await fetch('/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        query: messageInput.value.trim()
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    console.error(data.error);
+                    return;
+                }
+                
+                // 添加用戶搜尋訊息
+                const userMessageHtml = `
+                    <div class="message user-message">
+                        <div class="avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="message-content">
+                            <div class="text">搜尋: ${messageInput.value}</div>
+                            <div class="timestamp">剛剛</div>
+                        </div>
                     </div>
-                    <div class="message-content">
-                        ${data.user_message.image ? `
-                            <div class="image-container">
-                                <img src="/static/${data.user_message.image}" alt="使用者上傳圖片">
-                            </div>
-                        ` : ''}
-                        <div class="text">${data.user_message.content}</div>
-                        <div class="timestamp">剛剛</div>
-                    </div>
-                </div>
-            `;
-            messagesContainer.insertAdjacentHTML('beforeend', userMessageHtml);
-            
-            if (data.stream) {
-                // 創建助手消息容器
-                const assistantMessageHtml = `
+                `;
+                messagesContainer.insertAdjacentHTML('beforeend', userMessageHtml);
+                
+                // 添加搜尋結果
+                const searchResultHtml = `
                     <div class="message assistant-message">
                         <div class="avatar">
                             <i class="fas fa-robot"></i>
                         </div>
                         <div class="message-content">
-                            <div class="thinking-process">
-                                <div class="thinking-header">
-                                    <div class="thinking-icon">
-                                        <i class="fas fa-brain"></i>
-                                    </div>
-                                    <div class="thinking-title">推理過程</div>
-                                </div>
-                                <div class="thinking-text"></div>
-                            </div>
-                            <div class="final-answer" style="display: none;"></div>
+                            <div class="text">${data.result}</div>
                             <div class="timestamp">剛剛</div>
                         </div>
                     </div>
                 `;
-                messagesContainer.insertAdjacentHTML('beforeend', assistantMessageHtml);
+                messagesContainer.insertAdjacentHTML('beforeend', searchResultHtml);
                 
-                const assistantMessage = messagesContainer.lastElementChild;
-                const thinkingText = assistantMessage.querySelector('.thinking-text');
-                const finalAnswer = assistantMessage.querySelector('.final-answer');
-                
-                // 建立 SSE 連接
-                const queryParams = new URLSearchParams({
-                    message: messageInput.value,
-                    messages: JSON.stringify(data.messages)
-                }).toString();
-
-                const eventSource = new EventSource(`/stream_response?${queryParams}`);
-                
-                eventSource.onmessage = function(event) {
-                    const streamData = JSON.parse(event.data);
-                    if (streamData.type === 'thinking') {
-                        // 更新思考過程
-                        thinkingText.textContent = streamData.content;
-                    } else if (streamData.type === 'answer') {
-                        // 顯示最終答案
-                        finalAnswer.textContent = streamData.content;
-                        finalAnswer.style.display = 'block';
-                        eventSource.close();
-                    }
-                    // 滾動到底部
-                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                };
-                
-                eventSource.onerror = function() {
-                    eventSource.close();
-                };
             } else {
-                // 非流式響應的處理保持不變
-                const assistantMessageHtml = `
-                    <div class="message assistant-message">
+                // 原有的聊天邏輯
+                const formData = new FormData();
+                formData.append('message', messageInput.value);
+                formData.append('deep_reasoning', deepReasoning);
+                
+                if (imageUpload.files.length > 0) {
+                    formData.append('image', imageUpload.files[0]);
+                    formData.append('image_size', document.getElementById('image-size').value);
+                    formData.append('image_quality', document.getElementById('image-quality').value);
+                }
+                
+                response = await fetch('/chat', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    console.error(data.error);
+                    return;
+                }
+                
+                // 添加用戶消息
+                const userMessageHtml = `
+                    <div class="message user-message">
                         <div class="avatar">
-                            <i class="fas fa-robot"></i>
+                            <i class="fas fa-user"></i>
                         </div>
                         <div class="message-content">
-                            <div class="text">${data.assistant_message.content}</div>
+                            ${data.user_message.image ? `
+                                <div class="image-container">
+                                    <img src="/static/${data.user_message.image}" alt="使用者上傳圖片">
+                                </div>
+                            ` : ''}
+                            <div class="text">${data.user_message.content}</div>
                             <div class="timestamp">剛剛</div>
                         </div>
                     </div>
                 `;
-                messagesContainer.insertAdjacentHTML('beforeend', assistantMessageHtml);
+                messagesContainer.insertAdjacentHTML('beforeend', userMessageHtml);
+                
+                if (data.stream) {
+                    // 創建助手消息容器
+                    const assistantMessageHtml = `
+                        <div class="message assistant-message">
+                            <div class="avatar">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <div class="message-content">
+                                <div class="thinking-process">
+                                    <div class="thinking-header">
+                                        <div class="thinking-icon">
+                                            <i class="fas fa-brain"></i>
+                                        </div>
+                                        <div class="thinking-title">推理過程</div>
+                                    </div>
+                                    <div class="thinking-text"></div>
+                                </div>
+                                <div class="final-answer" style="display: none;"></div>
+                                <div class="timestamp">剛剛</div>
+                            </div>
+                        </div>
+                    `;
+                    messagesContainer.insertAdjacentHTML('beforeend', assistantMessageHtml);
+                    
+                    const assistantMessage = messagesContainer.lastElementChild;
+                    const thinkingText = assistantMessage.querySelector('.thinking-text');
+                    const finalAnswer = assistantMessage.querySelector('.final-answer');
+                    
+                    // 建立 SSE 連接
+                    const queryParams = new URLSearchParams({
+                        message: messageInput.value,
+                        messages: JSON.stringify(data.messages)
+                    }).toString();
+
+                    const eventSource = new EventSource(`/stream_response?${queryParams}`);
+                    
+                    eventSource.onmessage = function(event) {
+                        const streamData = JSON.parse(event.data);
+                        if (streamData.type === 'thinking') {
+                            // 更新思考過程
+                            thinkingText.textContent = streamData.content;
+                        } else if (streamData.type === 'answer') {
+                            // 顯示最終答案
+                            finalAnswer.textContent = streamData.content;
+                            finalAnswer.style.display = 'block';
+                            eventSource.close();
+                        }
+                        // 滾動到底部
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    };
+                    
+                    eventSource.onerror = function() {
+                        eventSource.close();
+                    };
+                } else {
+                    // 非流式響應的處理保持不變
+                    const assistantMessageHtml = `
+                        <div class="message assistant-message">
+                            <div class="avatar">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <div class="message-content">
+                                <div class="text">${data.assistant_message.content}</div>
+                                <div class="timestamp">剛剛</div>
+                            </div>
+                        </div>
+                    `;
+                    messagesContainer.insertAdjacentHTML('beforeend', assistantMessageHtml);
+                }
             }
             
             // 清空輸入

@@ -6,3 +6,4 @@ Pillow
 gunicorn
 python-magic
 mistralai
+exa-py

@@ -9,8 +9,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const removeImageBtn = document.getElementById('remove-image');
     const imageSizeSelect = document.getElementById('image-size');
     const imageQualitySelect = document.getElementById('image-quality');
+    const searchModeToggle = document.getElementById('search-mode');
     
     let selectedImage = null;
+    let isSubmitting = false;
     
     // 捲動到底部
     function scrollToBottom() {
@@ -118,14 +120,60 @@ document.addEventListener('DOMContentLoaded', function() {
         selectedImage = null;
     });
     
-    // 提交表單處理
-    chatForm.addEventListener('submit', function(e) {
+    // 修改表單提交處理
+    chatForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         
+        if (isSubmitting) return;
+        isSubmitting = true;
+        
+        const messageInput = document.getElementById('message-input');
         const message = messageInput.value.trim();
         
-        // 如果沒有訊息且沒有圖片，則不提交
-        if (!message && !selectedImage) {
+        if (!message && !imageUpload.files.length) {
+            isSubmitting = false;
+            return;
+        }
+        
+        // 檢查是否在搜尋模式
+        if (searchModeToggle.checked) {
+            try {
+                const response = await fetch('/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        query: message
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('搜尋請求失敗');
+                }
+                
+                const data = await response.json();
+                
+                // 添加搜尋結果到對話中
+                addMessageToUI({
+                    content: `搜尋: ${message}`
+                });
+                
+                addMessageToUI({
+                    content: data.result
+                }, false);
+                
+                // 清空輸入框
+                messageInput.value = '';
+                
+            } catch (error) {
+                console.error('搜尋錯誤:', error);
+                addMessageToUI({
+                    content: `搜尋時發生錯誤: ${error.message}`
+                }, false);
+            } finally {
+                isSubmitting = false;
+            }
             return;
         }
         

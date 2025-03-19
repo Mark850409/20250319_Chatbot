@@ -6,8 +6,12 @@ import requests
 from datetime import datetime
 import base64
 from werkzeug.utils import secure_filename
-from config import MISTRAL_API_KEY, MISTRAL_MODEL, MISTRAL_API_URL, JINA_API_URL
 from PIL import Image
+from dotenv import load_dotenv
+
+
+# 載入環境變數
+load_dotenv()
 
 app = Flask(__name__, static_folder='static')
 app.secret_key = os.urandom(24)
@@ -15,11 +19,11 @@ app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload
 app.config['CONVERSATIONS_FOLDER'] = 'data/conversations'
 
-# 确保上传和会话目录存在
+# 確保上傳和會話目錄存在
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['CONVERSATIONS_FOLDER'], exist_ok=True)
 
-# 允许的图片类型
+# 允許的圖片類型
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'tiff', 'svg'}
 
 def allowed_file(filename):
@@ -30,14 +34,14 @@ def get_image_base64(file_path):
         return base64.b64encode(image_file.read()).decode('utf-8')
 
 def save_conversation(conversation_id, messages):
-    # 创建一个可以存储的消息版本，移除大型base64数据但保留前端显示所需信息
+    # 建立一個可以儲存的訊息版本，移除大型base64資料但保留前端顯示所需資訊
     storable_messages = []
     for msg in messages:
         if msg['role'] == 'user' and isinstance(msg.get('content'), list):
-            # 处理包含图片的消息
+            # 處理包含圖片的訊息
             new_msg = {'role': 'user', 'content': []}
             
-            # 查找消息中的文本和图片
+            # 查找訊息中的文字和圖片
             text_content = None
             image_path = None
             
@@ -46,10 +50,10 @@ def save_conversation(conversation_id, messages):
                     text_content = item.get('text', '')
                     new_msg['content'].append(item)
                 elif item.get('type') == 'image_url':
-                    # 从消息对象中获取图片路径
+                    # 從訊息物件中獲取圖片路徑
                     if '_image_path' in msg:
                         image_path = msg['_image_path']
-                        # 保留图片引用而不是base64数据
+                        # 保留圖片引用而不是base64資料
                         new_msg['content'].append({
                             'type': 'image_url',
                             'image_url': {
@@ -57,25 +61,25 @@ def save_conversation(conversation_id, messages):
                             }
                         })
                     else:
-                        # 移除图片的base64数据，避免JSON过大
+                        # 移除圖片的base64資料，避免JSON過大
                         new_msg['content'].append({
                             'type': 'image_url',
                             'image_url': {
-                                'url': '/static/img/placeholder.png'  # 使用占位图
+                                'url': '/static/img/placeholder.png'  # 使用佔位圖
                             }
                         })
             
             if text_content:
-                # 存储字段用下划线前缀，表示仅用于前端显示，不发送到API
+                # 儲存欄位用底線前綴，表示僅用於前端顯示，不發送到API
                 new_msg['_display_content'] = text_content
                 
             if image_path:
-                # 存储字段用下划线前缀，表示仅用于前端显示，不发送到API
+                # 儲存欄位用底線前綴，表示僅用於前端顯示，不發送到API
                 new_msg['_image_path'] = image_path.replace('static/', '')
                 
             storable_messages.append(new_msg)
         else:
-            # 保留其他类型的消息不变
+            # 保留其他類型的訊息不變
             storable_messages.append(msg)
     
     filepath = os.path.join(app.config['CONVERSATIONS_FOLDER'], f"{conversation_id}.json")
@@ -121,17 +125,17 @@ def get_all_conversations():
     return sorted(conversations, key=lambda x: x['timestamp'], reverse=True)
 
 def call_mistral_api(messages):
-    if not MISTRAL_API_KEY:
-        return "未设置Mistral API密钥。请在config.py或环境变量中设置MISTRAL_API_KEY。"
+    if not os.getenv("MISTRAL_API_KEY"):
+        return "未設置Mistral API金鑰。請在.env文件中設置MISTRAL_API_KEY。"
     
     headers = {
         "Content-Type": "application/json",
         "Accept": "application/json",
-        "Authorization": f"Bearer {MISTRAL_API_KEY}"
+        "Authorization": f"Bearer {os.getenv('MISTRAL_API_KEY')}"
     }
     
     data = {
-        "model": MISTRAL_MODEL,
+        "model": os.getenv("MISTRAL_MODEL"),
         "messages": messages
     }
     
@@ -145,20 +149,20 @@ def call_mistral_api(messages):
                     if item.get('type') == 'image_url' and item.get('image_url', {}).get('url', '').startswith('data:'):
                         item['image_url']['url'] = '[BASE64_IMAGE_DATA]'
         
-        print(f"API请求: {json.dumps(debug_data, ensure_ascii=False, indent=2)}")
+        print(f"API請求: {json.dumps(debug_data, ensure_ascii=False, indent=2)}")
         
         # 发送实际请求，使用原始数据
-        response = requests.post(MISTRAL_API_URL, headers=headers, json=data)
+        response = requests.post(os.getenv("MISTRAL_API_URL"), headers=headers, json=data)
         
         if response.status_code == 200:
-            print(f"API响应: 状态码 {response.status_code}")
+            print(f"API回應: 狀態碼 {response.status_code}")
             return response.json()["choices"][0]["message"]["content"]
         else:
-            print(f"API错误: 状态码 {response.status_code}, 响应: {response.text}")
-            return f"API错误: {response.status_code}, {response.text}"
+            print(f"API錯誤: 狀態碼 {response.status_code}, 回應: {response.text}")
+            return f"API錯誤: {response.status_code}, {response.text}"
     except Exception as e:
-        print(f"请求异常: {str(e)}")
-        return f"请求错误: {str(e)}"
+        print(f"請求異常: {str(e)}")
+        return f"請求錯誤: {str(e)}"
 
 def call_jina_api(user_message, messages):
     headers = {
@@ -210,7 +214,7 @@ def call_jina_api(user_message, messages):
     
     try:
         print(f"Jina API 請求: {json.dumps(data, ensure_ascii=False, indent=2)}")
-        response = requests.post(JINA_API_URL, headers=headers, json=data, stream=True)
+        response = requests.post(os.getenv("JINA_API_URL"), headers=headers, json=data, stream=True)
         
         if response.status_code == 200:
             thinking_content = ""
@@ -250,7 +254,7 @@ def call_jina_api(user_message, messages):
                                     }
                                     
                 except Exception as e:
-                    print(f"處理響應行時出錯: {str(e)}")
+                    print(f"處理回應行時出錯: {str(e)}")
                     continue
                     
         else:
@@ -269,14 +273,14 @@ def call_jina_api(user_message, messages):
 
 # 添加图片处理函数
 def process_image(image_path, image_size='small', image_quality='medium'):
-    """处理图片：调整尺寸和优化质量"""
+    """處理圖片：調整尺寸和優化品質"""
     try:
         img = Image.open(image_path)
         
-        # 获取原始图片格式
+        # 獲取原始圖片格式
         img_format = img.format
         
-        # 根据选择的尺寸设置最大宽高
+        # 根據選擇的尺寸設置最大寬高
         if image_size == 'original':
             max_width, max_height = img.size  # 保持原始尺寸
         elif image_size == 'small':
@@ -286,9 +290,9 @@ def process_image(image_path, image_size='small', image_quality='medium'):
         elif image_size == 'large':
             max_width, max_height = 1600, 1600
         else:
-            max_width, max_height = 800, 800  # 默认
+            max_width, max_height = 800, 800  # 預設值
         
-        # 根据选择的质量设置
+        # 根據選擇的品質設置
         if image_quality == 'low':
             quality = 60
         elif image_quality == 'medium':
@@ -296,18 +300,18 @@ def process_image(image_path, image_size='small', image_quality='medium'):
         elif image_quality == 'high':
             quality = 95
         else:
-            quality = 85  # 默认
+            quality = 85  # 預設值
         
-        # 调整图片尺寸
+        # 調整圖片尺寸
         width, height = img.size
         if image_size != 'original' and (width > max_width or height > max_height):
-            # 计算缩放比例
+            # 計算縮放比例
             ratio = min(max_width/width, max_height/height)
             new_width = int(width * ratio)
             new_height = int(height * ratio)
             img = img.resize((new_width, new_height), Image.LANCZOS)
         
-        # 保存优化后的图片
+        # 儲存優化後的圖片
         if img_format in ['JPEG', 'JPG']:
             img.save(image_path, format=img_format, quality=quality, optimize=True)
         elif img_format == 'PNG':
@@ -315,13 +319,13 @@ def process_image(image_path, image_size='small', image_quality='medium'):
         elif img_format in ['WEBP', 'GIF']:
             img.save(image_path, format=img_format)
         else:
-            # 其他格式转换为JPEG
+            # 其他格式轉換為JPEG
             rgb_img = img.convert('RGB')
             rgb_img.save(image_path, format='JPEG', quality=quality, optimize=True)
             
         return True
     except Exception as e:
-        print(f"图片处理错误: {str(e)}")
+        print(f"圖片處理錯誤: {str(e)}")
         return False
 
 @app.route('/')
@@ -462,7 +466,7 @@ def chat():
         else:
             api_messages_clean.append({"role": "assistant", "content": msg.get('content', '')})
     
-    print(f"清理後的API消息數量: {len(api_messages_clean)}")
+    print(f"清理後的API訊息數量: {len(api_messages_clean)}")
     
     # 根據是否使用深度推理選擇不同的API
     if use_deep_reasoning:
@@ -524,6 +528,6 @@ def clear_history():
         return jsonify({"error": "清空歷史記錄失敗"}), 500
 
 if __name__ == '__main__':
-    if not MISTRAL_API_KEY:
-        print("警告: 未设置Mistral API密钥。请在config.py或环境变量中设置MISTRAL_API_KEY。")
+    if not os.getenv("MISTRAL_API_KEY"):
+        print("警告: 未設置 Mistral API 金鑰。請在 .env 檔案中設置 MISTRAL_API_KEY。")
     app.run(debug=True) 

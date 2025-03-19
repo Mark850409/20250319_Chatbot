@@ -1,0 +1,8 @@
+flask
+requests
+python-dotenv
+Werkzeug
+Pillow
+gunicorn
+python-magic
+mistralai

@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatBOT聊天機器人助手</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+    .thinking-process {
+        background-color: #f8f9fa;
+        border-left: 4px solid #4285f4;
+        margin: 10px 0;
+        padding: 15px;
+        border-radius: 8px;
+        font-size: 0.95em;
+    }
+
+    .thinking-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .thinking-icon {
+        background-color: #4285f4;
+        color: white;
+        padding: 8px;
+        border-radius: 50%;
+        margin-right: 10px;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .thinking-title {
+        color: #4285f4;
+        font-weight: 600;
+        font-size: 1.1em;
+    }
+
+    .thinking-text {
+        color: #666;
+        line-height: 1.6;
+        margin-left: 10px;
+        white-space: pre-wrap;
+    }
+
+    .final-answer {
+        background-color: white;
+        padding: 15px;
+        margin-top: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        color: #333;
+        font-size: 1.1em;
+        line-height: 1.6;
+    }
+
+    .message.assistant-message {
+        background-color: #f8f9fa;
+        border-radius: 12px;
+        padding: 15px;
+        margin: 10px 0;
+    }
+
+    .deep-reasoning-wrapper {
+        margin: 0;
+        display: flex;
+        justify-content: flex-start;
+    }
+
+    .deep-reasoning-toggle {
+        display: none;
+    }
+
+    .deep-reasoning-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background-color: #f0f2f5;
+        border: 1px solid #e4e6eb;
+        border-radius: 20px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 14px;
+        color: #65676b;
+    }
+
+    .deep-reasoning-btn i {
+        font-size: 16px;
+        color: #65676b;
+        transition: all 0.3s ease;
+    }
+
+    .deep-reasoning-toggle:checked + .deep-reasoning-btn {
+        background-color: #4285f4;
+        border-color: #4285f4;
+        color: white;
+    }
+
+    .deep-reasoning-toggle:checked + .deep-reasoning-btn i {
+        color: white;
+    }
+
+    .deep-reasoning-btn:hover {
+        background-color: #e4e6eb;
+    }
+
+    .deep-reasoning-toggle:checked + .deep-reasoning-btn:hover {
+        background-color: #3367d6;
+    }
+
+    .chat-input-form {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .input-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+    }
+
+    .message-input-wrapper {
+        flex-grow: 1;
+        display: flex;
+        align-items: center;
+        background-color: #f0f2f5;
+        border-radius: 20px;
+        padding: 8px 16px;
+    }
+
+    .send-btn {
+        background-color: #4285f4;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+    .send-btn:hover {
+        background-color: #3367d6;
+    }
+
+    .send-btn i {
+        font-size: 16px;
+    }
+
+    .upload-btn-wrapper {
+        margin-left: 8px;
+    }
+
+    .upload-btn {
+        background: none;
+        border: none;
+        color: #65676b;
+        cursor: pointer;
+        padding: 4px 8px;
+        transition: color 0.3s ease;
+    }
+
+    .upload-btn:hover {
+        color: #4285f4;
+    }
+
+    #message-input {
+        border: none;
+        background: none;
+        flex-grow: 1;
+        padding: 8px 0;
+        font-size: 14px;
+        outline: none;
+    }
+
+    .input-container {
+        padding: 15px;
+        border-top: 1px solid #e4e6eb;
+        background-color: white;
+    }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ChatBOT聊天機器人助手</h1>
+            <div class="actions">
+                <a href="{{ url_for('new_conversation') }}" class="btn"><i class="fas fa-plus"></i> 開起新對話</a>
+                <a href="{{ url_for('history') }}" class="btn"><i class="fas fa-history"></i> 聊天歷史紀錄</a>
+            </div>
+        </header>
+
+        <div class="chat-container">
+            <div class="messages" id="messages">
+                {% if messages|length == 0 %}
+                <div class="welcome-message">
+                    <h2>歡迎使用 ChatBOT聊天機器人助手</h2>
+                    <p>可以發送文字或圖片開始對話，或點擊歷史記錄查看之前的對話</p>
+                </div>
+                {% endif %}
+                
+                {% for message in messages %}
+                <div class="message {{ 'user-message' if message.role == 'user' else 'assistant-message' }}">
+                    <div class="avatar">
+                        {% if message.role == 'user' %}
+                        <i class="fas fa-user"></i>
+                        {% else %}
+                        <i class="fas fa-robot"></i>
+                        {% endif %}
+                    </div>
+                    <div class="message-content">
+                        {% if message.role == 'assistant' and message.thinking is defined and message.thinking %}
+                        <div class="thinking-process">
+                            <div class="thinking-header">
+                                <div class="thinking-icon">
+                                    <i class="fas fa-brain"></i>
+                                </div>
+                                <div class="thinking-title">推理過程</div>
+                            </div>
+                            <div class="thinking-text">{{ message.thinking }}</div>
+                        </div>
+                        <div class="final-answer">
+                            {{ message.content }}
+                        </div>
+                        {% else %}
+                        {% if message.image is defined and message.image %}
+                        <div class="image-container">
+                            <img src="{{ url_for('static', filename=message.image.replace('static/', '')) }}" alt="用户上传图片">
+                        </div>
+                        {% endif %}
+                        
+                        {% if message.content is string %}
+                        <div class="text">{{ message.content }}</div>
+                        {% elif message._display_content is defined %}
+                        <div class="text">{{ message._display_content }}</div>
+                        {% elif message.content is iterable and (message.content is not string) %}
+                        {% for content_item in message.content %}
+                            {% if content_item.type == 'text' %}
+                            <div class="text">{{ content_item.text }}</div>
+                            {% endif %}
+                        {% endfor %}
+                        {% endif %}
+                        {% endif %}
+                        
+                        <div class="timestamp">{{ message.timestamp|default('剛剛', true) }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="input-container">
+                <form id="chat-form" enctype="multipart/form-data" class="chat-input-form">
+                    <div class="deep-reasoning-wrapper">
+                        <input type="checkbox" class="deep-reasoning-toggle" id="deep-reasoning" name="deep_reasoning">
+                        <label class="deep-reasoning-btn" for="deep-reasoning">
+                            <i class="fas fa-brain"></i>
+                            <span>啟用深度推理</span>
+                        </label>
+                    </div>
+                    
+                    <div class="input-row">
+                        <div class="message-input-wrapper">
+                            <input type="text" id="message-input" placeholder="說點什麼呢..." autocomplete="off">
+                            <div class="upload-btn-wrapper">
+                                <button type="button" class="upload-btn">
+                                    <i class="fas fa-image"></i>
+                                </button>
+                                <input type="file" id="image-upload" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp,image/bmp,image/tiff,image/svg+xml" hidden>
+                            </div>
+                        </div>
+                        <button type="submit" class="send-btn">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </form>
+                <div id="image-preview-container" class="hidden">
+                    <div class="image-preview-wrapper">
+                        <img id="image-preview" src="" alt="Image preview">
+                        <button id="remove-image" class="remove-image-btn">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="image-options">
+                        <div class="image-option">
+                            <label for="image-size">圖片大小:</label>
+                            <select id="image-size">
+                                <option value="original">原始尺寸</option>
+                                <option value="small" selected>小 (800px)</option>
+                                <option value="medium">中 (1200px)</option>
+                                <option value="large">大 (1600px)</option>
+                            </select>
+                        </div>
+                        <div class="image-option">
+                            <label for="image-quality">品質:</label>
+                            <select id="image-quality">
+                                <option value="low">低 (60%)</option>
+                                <option value="medium" selected>中 (85%)</option>
+                                <option value="high">高 (95%)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    let isSubmitting = false;
+
+    // 圖片預覽相關功能
+    document.addEventListener('DOMContentLoaded', function() {
+        const imageUpload = document.getElementById('image-upload');
+        const imagePreview = document.getElementById('image-preview');
+        const imagePreviewContainer = document.getElementById('image-preview-container');
+        const uploadBtn = document.querySelector('.upload-btn');
+        const removeImageBtn = document.getElementById('remove-image');
+
+        uploadBtn.addEventListener('click', () => {
+            imageUpload.click();
+        });
+
+        imageUpload.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    imagePreviewContainer.classList.remove('hidden');
+                };
+                reader.readAsDataURL(this.files[0]);
+            }
+        });
+
+        removeImageBtn.addEventListener('click', () => {
+            imageUpload.value = '';
+            imagePreviewContainer.classList.add('hidden');
+        });
+    });
+
+    // 表單提交處理
+    document.getElementById('chat-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        if (isSubmitting) return;
+        isSubmitting = true;
+        
+        const messageInput = document.getElementById('message-input');
+        const imageUpload = document.getElementById('image-upload');
+        const imagePreviewContainer = document.getElementById('image-preview-container');
+        const deepReasoning = document.getElementById('deep-reasoning').checked;
+        const submitButton = this.querySelector('button[type="submit"]');
+        const messagesContainer = document.getElementById('messages');
+        
+        if (!messageInput.value.trim() && !imageUpload.files.length) {
+            isSubmitting = false;
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('message', messageInput.value);
+        formData.append('deep_reasoning', deepReasoning);
+        
+        if (imageUpload.files.length > 0) {
+            formData.append('image', imageUpload.files[0]);
+            formData.append('image_size', document.getElementById('image-size').value);
+            formData.append('image_quality', document.getElementById('image-quality').value);
+        }
+        
+        // 禁用輸入和按鈕
+        messageInput.disabled = true;
+        submitButton.disabled = true;
+        
+        try {
+            const response = await fetch('/chat', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                console.error(data.error);
+                return;
+            }
+            
+            // 添加用戶消息
+            const userMessageHtml = `
+                <div class="message user-message">
+                    <div class="avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="message-content">
+                        ${data.user_message.image ? `
+                            <div class="image-container">
+                                <img src="/static/${data.user_message.image}" alt="使用者上傳圖片">
+                            </div>
+                        ` : ''}
+                        <div class="text">${data.user_message.content}</div>
+                        <div class="timestamp">剛剛</div>
+                    </div>
+                </div>
+            `;
+            messagesContainer.insertAdjacentHTML('beforeend', userMessageHtml);
+            
+            if (data.stream) {
+                // 創建助手消息容器
+                const assistantMessageHtml = `
+                    <div class="message assistant-message">
+                        <div class="avatar">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <div class="message-content">
+                            <div class="thinking-process">
+                                <div class="thinking-header">
+                                    <div class="thinking-icon">
+                                        <i class="fas fa-brain"></i>
+                                    </div>
+                                    <div class="thinking-title">推理過程</div>
+                                </div>
+                                <div class="thinking-text"></div>
+                            </div>
+                            <div class="final-answer" style="display: none;"></div>
+                            <div class="timestamp">剛剛</div>
+                        </div>
+                    </div>
+                `;
+                messagesContainer.insertAdjacentHTML('beforeend', assistantMessageHtml);
+                
+                const assistantMessage = messagesContainer.lastElementChild;
+                const thinkingText = assistantMessage.querySelector('.thinking-text');
+                const finalAnswer = assistantMessage.querySelector('.final-answer');
+                
+                // 建立 SSE 連接
+                const queryParams = new URLSearchParams({
+                    message: messageInput.value,
+                    messages: JSON.stringify(data.messages)
+                }).toString();
+
+                const eventSource = new EventSource(`/stream_response?${queryParams}`);
+                
+                eventSource.onmessage = function(event) {
+                    const streamData = JSON.parse(event.data);
+                    if (streamData.type === 'thinking') {
+                        // 更新思考過程
+                        thinkingText.textContent = streamData.content;
+                    } else if (streamData.type === 'answer') {
+                        // 顯示最終答案
+                        finalAnswer.textContent = streamData.content;
+                        finalAnswer.style.display = 'block';
+                        eventSource.close();
+                    }
+                    // 滾動到底部
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                };
+                
+                eventSource.onerror = function() {
+                    eventSource.close();
+                };
+            } else {
+                // 非流式響應的處理保持不變
+                const assistantMessageHtml = `
+                    <div class="message assistant-message">
+                        <div class="avatar">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <div class="message-content">
+                            <div class="text">${data.assistant_message.content}</div>
+                            <div class="timestamp">剛剛</div>
+                        </div>
+                    </div>
+                `;
+                messagesContainer.insertAdjacentHTML('beforeend', assistantMessageHtml);
+            }
+            
+            // 清空輸入
+            messageInput.value = '';
+            imageUpload.value = '';
+            imagePreviewContainer.classList.add('hidden');
+            
+            // 滾動到底部
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+        } catch (error) {
+            console.error('Error:', error);
+        } finally {
+            // 重新啟用輸入和按鈕
+            messageInput.disabled = false;
+            submitButton.disabled = false;
+            isSubmitting = false;
+        }
+    });
+    </script>
+</body>
+</html> 

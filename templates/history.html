@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>聊天歷史紀錄 - ChatBOT</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .clear-history-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .clear-history-btn:hover {
+            background-color: #c82333;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            position: relative;
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        .modal-buttons {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .modal-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .confirm-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .cancel-btn {
+            background-color: #6c757d;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>聊天歷史紀錄</h1>
+            <div class="actions">
+                <a href="{{ url_for('index') }}" class="btn"><i class="fas fa-arrow-left"></i> 返回</a>
+                <a href="{{ url_for('new_conversation') }}" class="btn"><i class="fas fa-plus"></i> 開啟新對話</a>
+                {% if conversations|length > 0 %}
+                <button class="clear-history-btn" onclick="showConfirmModal()">
+                    <i class="fas fa-trash"></i> 清空紀錄
+                </button>
+                {% endif %}
+            </div>
+        </header>
+
+        <div class="history-container">
+            {% if conversations|length == 0 %}
+            <div class="empty-state">
+                <i class="fas fa-history empty-icon"></i>
+                <p>暫無聊天歷史紀錄</p>
+                <a href="{{ url_for('index') }}" class="btn primary-btn">開始新對話</a>
+            </div>
+            {% else %}
+            <div class="conversation-list">
+                {% for conversation in conversations %}
+                <a href="{{ url_for('view_conversation', conversation_id=conversation.id) }}" class="conversation-item">
+                    <div class="conversation-header">
+                        <div class="conversation-title">
+                            <i class="fas fa-comments"></i>
+                            <span>對話 #{{ loop.index }}</span>
+                        </div>
+                        <div class="conversation-date">
+                            {{ conversation.timestamp.split('T')[0] }} {{ conversation.timestamp.split('T')[1].split('.')[0] }}
+                        </div>
+                    </div>
+                    <div class="conversation-preview">
+                        {{ conversation.preview[:100] + '...' if conversation.preview|length > 100 else conversation.preview }}
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 確認對話框 -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <h2>確認清空</h2>
+            <p>確定要清空所有聊天紀錄嗎？此操作無法復原。</p>
+            <div class="modal-buttons">
+                <button class="modal-btn cancel-btn" onclick="hideConfirmModal()">取消</button>
+                <button class="modal-btn confirm-btn" onclick="clearHistory()">確認清空</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showConfirmModal() {
+            document.getElementById('confirmModal').style.display = 'block';
+        }
+        
+        function hideConfirmModal() {
+            document.getElementById('confirmModal').style.display = 'none';
+        }
+        
+        function clearHistory() {
+            fetch('/clear_history', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    alert('清空紀錄失敗，請稍後再試');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('清空紀錄失敗，請稍後再試');
+            });
+        }
+    </script>
+</body>
+</html> 

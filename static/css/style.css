@@ -473,80 +473,66 @@ header h1 {
     margin-bottom: 8px;
 }
 
-.thinking-process {
-    background-color: #f8f9fa;
-    padding: 12px;
-    border-radius: 8px;
-    margin-bottom: 12px;
-}
-
-.thinking-header {
-    display: flex;
-    align-items: center;
-    color: #666;
-    margin-bottom: 8px;
-    font-weight: 500;
-}
-
-.thinking-header i {
-    margin-right: 8px;
-    color: #4a90e2;
-}
-
-.answer-section {
-    background-color: #fff;
-    padding: 12px;
-    border-radius: 8px;
-    border-left: 4px solid #4a90e2;
-    margin-top: 12px;
-    opacity: 0;
-    animation: fadeIn 0.5s ease-in forwards;
-}
-
-.answer-header {
-    display: flex;
-    align-items: center;
-    color: #4a90e2;
-    margin-bottom: 8px;
-    font-weight: 500;
-}
-
-.answer-header i {
-    margin-right: 8px;
-}
-
-.answer-text {
-    line-height: 1.6;
-    color: #333;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.final-answer {
-    background-color: white;
-    padding: 15px;
-    margin-top: 15px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    color: #333;
-    font-size: 1.1em;
-    line-height: 1.6;
-}
-
-.message.assistant-message {
-    background-color: #f8f9fa;
-    border-radius: 12px;
+/* 思考過程和回答的共同樣式 */
+.thinking-process, .final-answer {
+    background: #f8f9fa;
+    border-radius: 10px;
     padding: 15px;
     margin: 10px 0;
+}
+
+/* 標題區域統一樣式 */
+.thinking-header, .answer-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    color: #4a8eff;
+    font-weight: 500;
+}
+
+.thinking-icon, .answer-icon {
+    margin-right: 8px;
+    color: #4a8eff;
+}
+
+.thinking-title, .answer-title {
+    color: #666;
+    font-weight: 500;
+}
+
+/* 內容區域統一樣式 */
+.thinking-text, .answer-text {
+    font-family: monospace;
+    color: #666;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    margin: 8px 0;
+    background: #fff;
+    padding: 12px;
+    border-radius: 8px;
+}
+
+/* 工具調用區域樣式 */
+.tool-call {
+    font-family: monospace;
+    background: #f0f2f5;
+    border-radius: 6px;
+    padding: 10px;
+    margin: 8px 0;
+    color: #666;
+    font-size: 14px;
+}
+
+/* 移除衝突的樣式 */
+.message.assistant-message {
+    background: transparent;
+    padding: 0;
+}
+
+/* 移除重複的動畫定義 */
+.thinking-process, .final-answer {
+    opacity: 1;
+    transform: none;
 }
 
 .deep-reasoning-wrapper {
@@ -829,4 +815,177 @@ header h1 {
 
 .search-toggle:checked + .search-btn:hover {
     background-color: #3367d6;
+}
+
+/* 思考指示器容器樣式 */
+.thinking-indicator {
+    display: flex;
+    flex-direction: column;
+    background: #f8faff;
+    border-radius: 12px;
+    padding: 18px;
+    margin: 12px 0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    opacity: 0;
+    transform: translateY(-10px);
+    animation: slideIn 0.4s ease forwards;
+}
+
+.thinking-indicator-content {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+/* 思考點點動畫 */
+.thinking-dots {
+    display: flex;
+    gap: 5px;
+    margin-right: 15px;
+}
+
+.thinking-dot {
+    width: 8px;
+    height: 8px;
+    background: linear-gradient(135deg, #6e8efb, #4a8eff);
+    border-radius: 50%;
+    animation: pulse 1.4s infinite ease-in-out;
+    box-shadow: 0 2px 4px rgba(74, 142, 255, 0.25);
+}
+
+.thinking-dot:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.thinking-dot:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+.thinking-text {
+    font-size: 0.95rem;
+    color: #606770;
+    font-weight: 500;
+    margin-left: 5px;
+}
+
+/* 進度條樣式 */
+.progress-bar {
+    width: 100%;
+    height: 5px;
+    background: #eef2f7;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 10px;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #6e8efb, #4f91ff, #2196f3);
+    border-radius: 10px;
+    box-shadow: 0 1px 5px rgba(33, 150, 243, 0.3);
+    animation: shimmer 2s linear infinite, progress 2.5s ease-in-out infinite;
+    background-size: 200% 100%;
+}
+
+/* 動畫定義 */
+@keyframes pulse {
+    0%, 80%, 100% {
+        transform: scale(0.8);
+        opacity: 0.7;
+    }
+    40% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+}
+
+@keyframes progress {
+    0% {
+        width: 0%;
+    }
+    50% {
+        width: 70%;
+    }
+    100% {
+        width: 100%;
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 100% 0;
+    }
+    100% {
+        background-position: -100% 0;
+    }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Markdown 內容樣式 */
+.markdown-content {
+    line-height: 1.6;
+}
+
+.markdown-content h1 {
+    font-size: 2em;
+    margin: 0.67em 0;
+}
+
+.markdown-content h2 {
+    font-size: 1.5em;
+    margin: 0.75em 0;
+}
+
+.markdown-content h3 {
+    font-size: 1.17em;
+    margin: 0.83em 0;
+}
+
+.markdown-content ul, 
+.markdown-content ol {
+    padding-left: 2em;
+}
+
+.markdown-content code {
+    background: #f4f4f4;
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+}
+
+.markdown-content pre {
+    background: #f4f4f4;
+    padding: 1em;
+    border-radius: 5px;
+    overflow-x: auto;
+}
+
+.markdown-content blockquote {
+    border-left: 4px solid #ddd;
+    padding-left: 1em;
+    margin-left: 0;
+    color: #666;
+}
+
+.markdown-content table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+}
+
+.markdown-content th,
+.markdown-content td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
 }

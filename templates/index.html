@@ -6,6 +6,7 @@
     <title>ChatBOT聊天機器人助手</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> 
 </head>
 <body>
     <div class="container">
@@ -170,7 +171,32 @@
             imageUpload.value = '';
             imagePreviewContainer.classList.add('hidden');
         });
+
+        // 添加切換按鈕的互斥邏輯
+        const deepReasoningToggle = document.getElementById('deep-reasoning');
+        const searchModeToggle = document.getElementById('search-mode');
+
+        deepReasoningToggle.addEventListener('change', function() {
+            if (this.checked) {
+                searchModeToggle.checked = false;
+            }
+        });
+
+        searchModeToggle.addEventListener('change', function() {
+            if (this.checked) {
+                deepReasoningToggle.checked = false;
+            }
+        });
     });
+
+    // 添加一個滾動到底部的函數
+    function scrollToBottom() {
+        const messagesContainer = document.getElementById('messages');
+        // 使用 setTimeout 確保在 DOM 更新後再滾動
+        setTimeout(() => {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }, 100);
+    }
 
     // 表單提交處理
     document.getElementById('chat-form').addEventListener('submit', async function(e) {
@@ -213,15 +239,33 @@
                     </div>
                 `;
                 messagesContainer.insertAdjacentHTML('beforeend', userMessageHtml);
+                scrollToBottom();
 
-                // 創建助手消息容器，包含思考過程和回答區域
+                // 保存當前輸入的值
+                const currentQuery = messageInput.value.trim();
+                
+                // 清空輸入框
+                messageInput.value = '';
+
+                // 創建助手消息容器，初始只顯示思考指示器
                 const assistantMessageHtml = `
                     <div class="message assistant-message">
                         <div class="avatar">
                             <i class="fas fa-robot"></i>
                         </div>
                         <div class="message-content">
-                            <div class="thinking-process">
+                            <div class="thinking-indicator">
+                                <div class="thinking-dots">
+                                    <div class="thinking-dot"></div>
+                                    <div class="thinking-dot"></div>
+                                    <div class="thinking-dot"></div>
+                                </div>
+                                <div class="thinking-text">正在思考中...</div>
+                                <div class="progress-bar">
+                                    <div class="progress-bar-fill"></div>
+                                </div>
+                            </div>
+                            <div class="thinking-process" style="display: none;">
                                 <div class="thinking-header">
                                     <i class="fas fa-brain"></i> 思考過程
                                 </div>
@@ -231,57 +275,126 @@
                                 <div class="answer-header">
                                     <i class="fas fa-lightbulb"></i> 回答
                                 </div>
-                                <div class="answer-text"></div>
+                                <div class="answer-text markdown-content"></div>
                             </div>
+                            <div class="final-answer markdown-content" style="display: none;"></div>
                             <div class="timestamp">剛剛</div>
                         </div>
                     </div>
                 `;
                 messagesContainer.insertAdjacentHTML('beforeend', assistantMessageHtml);
+                scrollToBottom();
 
                 const assistantMessage = messagesContainer.lastElementChild;
-                const thinkingText = assistantMessage.querySelector('.thinking-text');
+                const thinkingIndicator = assistantMessage.querySelector('.thinking-indicator');
+                const thinkingProcess = assistantMessage.querySelector('.thinking-process');
+                const thinkingText = thinkingProcess.querySelector('.thinking-text');
                 const answerSection = assistantMessage.querySelector('.answer-section');
-                const answerText = assistantMessage.querySelector('.answer-text');
+                const answerText = answerSection.querySelector('.answer-text');
 
-                // 發送搜索請求
-                const response = await fetch('/search', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        query: messageInput.value.trim()
-                    })
-                });
+                try {
+                    // 發送搜索請求
+                    const response = await fetch('/search', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            query: currentQuery
+                        })
+                    });
 
-                const data = await response.json();
-                
-                if (data.error) {
-                    thinkingText.textContent = `錯誤：${data.error}`;
-                    return;
-                }
-
-                // 更新思考過程
-                thinkingText.textContent = data.thinking;
-
-                // 等待一小段時間後再顯示答案（讓使用者有時間閱讀思考過程）
-                setTimeout(() => {
-                    // 顯示答案區域並更新內容
-                    answerSection.style.display = 'block';
-                    answerText.textContent = data.result;
+                    const data = await response.json();
                     
-                    // 滾動到底部
-                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                }, 1500); // 延遲 1.5 秒顯示答案
+                    if (data.error) {
+                        thinkingText.textContent = `錯誤：${data.error}`;
+                        return;
+                    }
+
+                    // 延遲 1.5 秒後顯示思考過程
+                    setTimeout(() => {
+                        // 淡出思考指示器
+                        thinkingIndicator.style.opacity = '0';
+                        
+                        setTimeout(() => {
+                            // 隱藏思考指示器
+                            thinkingIndicator.style.display = 'none';
+                            
+                            // 顯示思考過程
+                            thinkingProcess.style.display = 'block';
+                            thinkingProcess.style.opacity = '0';
+                            
+                            let thinkingContent = '';
+                            if (data.thinking_process && Array.isArray(data.thinking_process)) {
+                                thinkingContent = data.thinking_process
+                                    .map(process => process.content)
+                                    .join('');
+                            }
+                            thinkingText.textContent = thinkingContent;
+
+                            // 淡入思考過程
+                            setTimeout(() => {
+                                thinkingProcess.style.opacity = '1';
+                                
+                                // 延遲 1.5 秒後顯示答案
+                                setTimeout(() => {
+                                    // 顯示答案區域
+                                    answerSection.style.display = 'block';
+                                    answerText.innerHTML = marked.parse(data.answer || '無法獲取答案');
+                                    
+                                    // 觸發重排後添加動畫
+                                    requestAnimationFrame(() => {
+                                        answerSection.classList.add('show');
+                                    });
+                                    
+                                    // 滾動到底部
+                                    scrollToBottom();
+                                }, 1500);
+                            }, 50);
+                        }, 300);
+                    }, 1500);
+
+                } catch (error) {
+                    console.error('Error:', error);
+                    thinkingText.textContent = `錯誤：${error.message}`;
+                }
             } else {
+                // 立即顯示用戶消息
+                const userMessageHtml = `
+                    <div class="message user-message">
+                        <div class="avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="message-content">
+                            ${imageUpload.files.length > 0 ? `
+                                <div class="image-container">
+                                    <img src="${URL.createObjectURL(imageUpload.files[0])}" alt="使用者上傳圖片">
+                                </div>
+                            ` : ''}
+                            <div class="text">${messageInput.value}</div>
+                            <div class="timestamp">剛剛</div>
+                        </div>
+                    </div>
+                `;
+                messagesContainer.insertAdjacentHTML('beforeend', userMessageHtml);
+                scrollToBottom();
+
+                // 保存當前輸入的值
+                const currentMessage = messageInput.value;
+                const currentImage = imageUpload.files[0];
+                
+                // 立即清空輸入
+                messageInput.value = '';
+                imageUpload.value = '';
+                imagePreviewContainer.classList.add('hidden');
+
                 // 聊天模式的處理邏輯
                 const formData = new FormData();
-                formData.append('message', messageInput.value);
+                formData.append('message', currentMessage);
                 formData.append('deep_reasoning', deepReasoning);
                 
-                if (imageUpload.files.length > 0) {
-                    formData.append('image', imageUpload.files[0]);
+                if (currentImage) {
+                    formData.append('image', currentImage);
                     formData.append('image_size', document.getElementById('image-size').value);
                     formData.append('image_quality', document.getElementById('image-quality').value);
                 }
@@ -298,34 +411,26 @@
                     return;
                 }
                 
-                // 添加用戶消息
-                const userMessageHtml = `
-                    <div class="message user-message">
-                        <div class="avatar">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <div class="message-content">
-                            ${data.user_message.image ? `
-                                <div class="image-container">
-                                    <img src="/static/${data.user_message.image}" alt="使用者上傳圖片">
-                                </div>
-                            ` : ''}
-                            <div class="text">${data.user_message.content}</div>
-                            <div class="timestamp">剛剛</div>
-                        </div>
-                    </div>
-                `;
-                messagesContainer.insertAdjacentHTML('beforeend', userMessageHtml);
-                
                 if (data.stream) {
-                    // 創建助手消息容器，包含思考過程和回答區域
+                    // 創建助手消息容器，包含思考指示器
                     const assistantMessageHtml = `
                         <div class="message assistant-message">
                             <div class="avatar">
                                 <i class="fas fa-robot"></i>
                             </div>
                             <div class="message-content">
-                                <div class="thinking-process">
+                                <div class="thinking-indicator">
+                                    <div class="thinking-dots">
+                                        <div class="thinking-dot"></div>
+                                        <div class="thinking-dot"></div>
+                                        <div class="thinking-dot"></div>
+                                    </div>
+                                    <div class="thinking-text">正在思考中...</div>
+                                    <div class="progress-bar">
+                                        <div class="progress-bar-fill"></div>
+                                    </div>
+                                </div>
+                                <div class="thinking-process" style="display: none;">
                                     <div class="thinking-header">
                                         <div class="thinking-icon">
                                             <i class="fas fa-brain"></i>
@@ -334,16 +439,17 @@
                                     </div>
                                     <div class="thinking-text"></div>
                                 </div>
-                                <div class="final-answer" style="display: none;"></div>
+                                <div class="final-answer markdown-content" style="display: none;"></div>
                                 <div class="timestamp">剛剛</div>
                             </div>
                         </div>
                     `;
                     messagesContainer.insertAdjacentHTML('beforeend', assistantMessageHtml);
+                    scrollToBottom();
 
                     // 處理串流回應
                     const queryParams = new URLSearchParams({
-                        message: messageInput.value,
+                        message: currentMessage,
                         messages: JSON.stringify(data.messages)
                     }).toString();
 
@@ -352,53 +458,83 @@
                     eventSource.onmessage = function(event) {
                         const streamData = JSON.parse(event.data);
                         const assistantMessage = messagesContainer.lastElementChild;
+                        const thinkingIndicator = assistantMessage.querySelector('.thinking-indicator');
+                        const thinkingProcess = assistantMessage.querySelector('.thinking-process');
                         
                         if (streamData.type === 'thinking') {
-                            // 更新思考過程
-                            const thinkingText = assistantMessage.querySelector('.thinking-text');
+                            // 隱藏思考指示器，顯示思考過程
+                            thinkingIndicator.style.display = 'none';
+                            thinkingProcess.style.display = 'block';
+                            const thinkingText = thinkingProcess.querySelector('.thinking-text');
                             if (thinkingText) {
                                 thinkingText.textContent = streamData.content;
                             }
                         } else if (streamData.type === 'answer') {
-                            // 顯示最終答案
+                            // 隱藏思考指示器和思考過程，顯示最終答案
+                            thinkingIndicator.style.display = 'none';
                             const finalAnswer = assistantMessage.querySelector('.final-answer');
                             if (finalAnswer) {
-                                finalAnswer.textContent = streamData.content;
+                                finalAnswer.innerHTML = marked.parse(streamData.content);
                                 finalAnswer.style.display = 'block';
                             }
                             eventSource.close();
                         }
-                        // 滾動到底部
-                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                        // 每次更新內容後都滾動
+                        scrollToBottom();
                     };
                     
                     eventSource.onerror = function() {
                         eventSource.close();
                     };
                 } else if (data.assistant_message) {
-                    // 添加助手消息
-                    const assistantMessageHtml = `
+                    // 先顯示思考指示器
+                    const thinkingMessageHtml = `
                         <div class="message assistant-message">
                             <div class="avatar">
                                 <i class="fas fa-robot"></i>
                             </div>
                             <div class="message-content">
-                                <div class="text">${data.assistant_message.content}</div>
+                                <div class="thinking-indicator">
+                                    <div class="thinking-dots">
+                                        <div class="thinking-dot"></div>
+                                        <div class="thinking-dot"></div>
+                                        <div class="thinking-dot"></div>
+                                    </div>
+                                    <div class="thinking-text">正在分析圖片...</div>
+                                    <div class="progress-bar">
+                                        <div class="progress-bar-fill"></div>
+                                    </div>
+                                </div>
                                 <div class="timestamp">剛剛</div>
                             </div>
                         </div>
                     `;
-                    messagesContainer.insertAdjacentHTML('beforeend', assistantMessageHtml);
+                    messagesContainer.insertAdjacentHTML('beforeend', thinkingMessageHtml);
+                    scrollToBottom();
+
+                    // 等待一小段時間後顯示答案
+                    setTimeout(() => {
+                        // 移除思考指示器
+                        const thinkingMessage = messagesContainer.lastElementChild;
+                        thinkingMessage.remove();
+
+                        // 顯示助手的回答
+                        const assistantMessageHtml = `
+                            <div class="message assistant-message">
+                                <div class="avatar">
+                                    <i class="fas fa-robot"></i>
+                                </div>
+                                <div class="message-content">
+                                    <div class="text markdown-content">${marked.parse(data.assistant_message.content)}</div>
+                                    <div class="timestamp">剛剛</div>
+                                </div>
+                            </div>
+                        `;
+                        messagesContainer.insertAdjacentHTML('beforeend', assistantMessageHtml);
+                        scrollToBottom();
+                    }, 1500); // 延遲 1.5 秒顯示答案
                 }
             }
-            
-            // 清空輸入
-            messageInput.value = '';
-            imageUpload.value = '';
-            imagePreviewContainer.classList.add('hidden');
-            
-            // 滾動到底部
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
             
         } catch (error) {
             console.error('Error:', error);

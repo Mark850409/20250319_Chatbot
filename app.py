@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from exa_py import Exa
 import logging
 import re
+from urllib.parse import quote
 
 
 # 載入環境變數
@@ -533,9 +534,57 @@ def clear_history():
 # 設置日誌
 logger = logging.getLogger(__name__)
 
+@app.route('/search', methods=['GET', 'POST'])
+async def search():
+    try:
+        # 根據請求方法獲取查詢參數
+        if request.method == 'POST':
+            if not request.is_json:
+                return jsonify({
+                    'success': False,
+                    'error': '請求格式錯誤，需要JSON數據'
+                }), 400
+            data = request.get_json()
+            query = data.get('query', '').strip()
+        else:  # GET
+            query = request.args.get('query', '').strip()
+            
+        print(f"收到查詢參數: {query}")
+        
+        if not query:
+            return jsonify({
+                'success': False,
+                'error': '搜尋關鍵字不能為空'
+            }), 400
+        
+        # 調用搜索函數
+        result = await exa_search(query)
+        print(f"搜索結果: {result}")
+        
+        if result["success"]:
+            return jsonify({
+                'success': True,
+                'thinking_process': result['thinking_process'],
+                'answer': result['answer']
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result['error']
+            })
+            
+    except Exception as e:
+        print(f"搜尋請求處理錯誤: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': f'搜尋處理失敗: {str(e)}'
+        }), 500
+
 async def exa_search(query: str) -> dict:
     """
-    使用 EXA Search API 進行網路搜索，並用 Gemini 進行總結
+    使用搜索 API 進行網路搜索
     
     Args:
         query (str): 搜索關鍵字
@@ -544,155 +593,121 @@ async def exa_search(query: str) -> dict:
         dict: 包含思考過程和最終回答的字典
     """
     try:
-        # 檢查 API Key
-        exa_api_key = os.getenv("EXA_API_KEY")
-        gemini_api_key = os.getenv("GEMINI_API_KEY")
+        print(f"\n=== exa_search 開始 ===")
+        print(f"收到查詢字串: {query}")
         
-        if not exa_api_key:
+        # 檢查查詢字串
+        if not query or query.strip() == "":
             return {
-                "thinking": "檢查 API 設定...",
-                "answer": "錯誤：未設置 EXA_API_KEY"
+                "success": False,
+                "error": "搜尋關鍵字不能為空"
             }
-        if not gemini_api_key:
-            return {
-                "thinking": "檢查 API 設定...",
-                "answer": "錯誤：未設置 GEMINI_API_KEY"
-            }
-
-        # 初始化 Exa 客戶端
-        thinking_process = ["開始搜索流程...", "初始化 EXA 客戶端..."]
-        exa = Exa(api_key=exa_api_key)
-
-        # 執行搜索
-        thinking_process.append(f"執行網路搜索：{query}")
-        search_response = exa.search_and_contents(
-            query,
-            text=True,
-            num_results=3,
-            category="web",
-            type="keyword"
-        )
-
-        # 取得搜索結果
-        thinking_process.append("處理搜索結果...")
-        results = search_response.results
-
-        # 格式化結果
-        formatted_content = []
-        for i, result in enumerate(results, 1):
-            thinking_process.append(f"處理第 {i} 個搜索結果...")
-            content = f"標題: {result.title if hasattr(result, 'title') else '無標題'}\n"
-            content += f"網址: {result.url if hasattr(result, 'url') else '無網址'}\n"
-            if hasattr(result, 'text'):
-                # 移除 HTML 標籤
-                import re
-                clean_text = re.sub(r'<[^>]+>', '', result.text)
-                content += f"內容:\n{clean_text}\n"
-            formatted_content.append(content)
-
-        thinking_process.append("準備使用 Gemini 模型總結搜索結果...")
-        
-        # 修改格式化字符串的方式
-        formatted_results = "\n---\n".join(formatted_content)
-        summary_prompt = (
-            "請幫我總結以下搜索結果，整理成易讀的格式：\n\n"
-            f"{formatted_results}\n\n"
-            "請包含：\n"
-            "1. 主要內容摘要\n"
-            "2. 重要觀點或結論\n"
-            "3. 相關連結\n\n"
-            "請用繁體中文回答。請先用<think>標籤包住你的思考過程，再給出最終答案。"
-        )
-
-        thinking_process.append("正在使用 Gemini 模型生成總結...")
-        
-        # 使用 Gemini API
-        response = requests.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_api_key}",
-            headers={
-                "Content-Type": "application/json"
-            },
-            json={
-                "contents": [{
-                    "parts":[{
-                        "text": summary_prompt
-                    }]
-                }]
-            },
-            stream=True
-        )
-        print(response.json())
-
-        if response.status_code == 200:
-            result = response.json()
             
-            # 解析 Gemini 回應
-            if 'candidates' in result and len(result['candidates']) > 0:
-                content = result['candidates'][0]['content']['parts'][0]['text']
+        # 構建請求 URL，確保查詢字串被正確編碼
+        url = "https://mynocodbapi.zeabur.app/search"
+        
+        # 使用 quote_plus 來處理特殊字符
+        from urllib.parse import quote_plus
+        encoded_query = quote_plus(query.strip())
+        
+        # 構建完整的參數
+        params = {
+            "query": encoded_query,  # 使用編碼後的查詢字串
+            "num_results": "1",      # 轉為字符串
+            "category": "web",
+            "search_type": "keyword"
+        }
+        
+        print(f"請求 URL: {url}")
+        print(f"請求參數: {params}")
+        
+        # 發送請求，不讓 requests 自動處理參數
+        full_url = f"{url}?query={encoded_query}&num_results=1&category=web&search_type=keyword"
+        print(f"完整 URL: {full_url}")
+        
+        response = requests.get(
+            full_url,
+            headers={"accept": "application/json"}
+        )
+        
+        print(f"回應狀態碼: {response.status_code}")
+        print(f"回應內容: {response.text}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            if data["status"] == "success":
+                messages = data["result"]["messages"]
+                thinking_process = []
+                final_answer = ""
                 
-                # 分離思考過程和最終答案
-                think_start = content.find('<think>')
-                think_end = content.find('</think>')
+                # 1. 找到工具調用事件
+                tool_call = next(
+                    (msg for msg in messages 
+                     if msg["type"] == "ToolCallRequestEvent" and 
+                     msg["source"] == "assistant_agent"),
+                    None
+                )
                 
-                if think_start != -1 and think_end != -1:
-                    thinking_content = content[think_start + 7:think_end]
-                    final_answer = content[think_end + 8:].strip()
-                else:
-                    thinking_content = "\n".join(thinking_process)
-                    final_answer = content
+                if tool_call and tool_call.get("content"):
+                    for tool in tool_call["content"]:
+                        tool_name = tool.get("name", "")
+                        try:
+                            args = json.loads(tool.get("arguments", "{}"))
+                            args_str = ", ".join(f"{k}={v}" for k, v in args.items())
+                            thinking_process.append({
+                                'type': 'thinking',
+                                'content': f"💭 調用工具：\n    {tool_name}({args_str})\n"
+                            })
+                        except json.JSONDecodeError:
+                            thinking_process.append({
+                                'type': 'thinking',
+                                'content': f"💭 調用工具：\n    {tool_name}\n"
+                            })
                 
-                thinking_process.append("總結生成完成！")
+                # 2. 提取最終回答
+                final_message = next(
+                    (msg for msg in messages 
+                     if msg["type"] == "TextMessage" and 
+                     msg["source"] == "analyze_agent" and
+                     msg.get("content")),
+                    None
+                )
+                
+                if final_message:
+                    final_answer = final_message["content"]
+                    if "TERMINATE" in final_answer:
+                        final_answer = final_answer.replace("TERMINATE.", "").strip()
+                
+                print("處理完成，返回結果")
                 return {
-                    "thinking": thinking_content,
+                    "success": True,
+                    "thinking_process": thinking_process,
                     "answer": final_answer
                 }
             else:
+                error_msg = data.get("message", "未知錯誤")
+                print(f"API 回應錯誤: {error_msg}")
                 return {
-                    "thinking": "\n".join(thinking_process),
-                    "answer": "無法從 Gemini API 獲取有效回應"
+                    "success": False,
+                    "error": error_msg
                 }
         else:
-            thinking_process.append("API 調用失敗...")
+            print(f"API 請求失敗: {response.status_code} - {response.text}")
             return {
-                "thinking": "\n".join(thinking_process),
-                "answer": f"Gemini API 錯誤：{response.status_code} - {response.text}"
+                "success": False,
+                "error": f"API 請求失敗: {response.status_code} - {response.text}"
             }
-
+            
     except Exception as e:
-        logger.error(f"搜索過程中發生錯誤: {str(e)}")
+        print(f"搜索過程中發生錯誤: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
         return {
-            "thinking": "搜索過程中發生錯誤",
-            "answer": f"錯誤：{str(e)}"
+            "success": False,
+            "error": f"錯誤：{str(e)}"
         }
 
-@app.route('/search', methods=['POST'])
-async def search():
-    data = request.json
-    query = data.get('query')
-    
-    if not query:
-        return jsonify({
-            'success': False,
-            'error': '搜尋關鍵字不能為空'
-        }), 400
-    
-    try:
-        # 調用 EXA 搜尋
-        result = await exa_search(query)
-        
-        return jsonify({
-            'success': True,
-            'thinking': result['thinking'],
-            'result': result['answer'],
-            'combined': result.get('combined', True)  # 添加組合顯示標記
-        })
-    except Exception as e:
-        logger.error(f"搜尋請求處理錯誤: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': f'搜尋處理失敗: {str(e)}'
-        }), 500
-    
 if __name__ == '__main__':
     if not os.getenv("MISTRAL_API_KEY"):
         print("警告: 未設置 Mistral API 金鑰。請在 .env 檔案中設置 MISTRAL_API_KEY。")

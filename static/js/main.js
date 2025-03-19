@@ -263,4 +263,20 @@ document.addEventListener('DOMContentLoaded', function() {
             removeImageBtn.click();
         }
     });
-}); 
+});
+
+function renderMarkdown(text) {
+    // 使用 marked 將 Markdown 轉換為 HTML
+    const htmlContent = marked.parse(text);
+    
+    // 將內容包裝在 markdown-content 類中
+    return `<div class="markdown-content">${htmlContent}</div>`;
+}
+
+// 當接收到回應時
+function displayResponse(response) {
+    const messageContent = document.createElement('div');
+    messageContent.className = 'message-content';
+    messageContent.innerHTML = renderMarkdown(response);
+    // ... 其他顯示邏輯 ...
+} 

@@ -7,3 +7,8 @@ gunicorn
 python-magic
 mistralai
 exa-py
+autogen-ext
+autogen-agentchat
+autogen-core
+json-schema-to-pydantic
+hypercorn

@@ -469,47 +469,66 @@ header h1 {
     }
 } 
 
+.thinking-message {
+    margin-bottom: 8px;
+}
+
 .thinking-process {
     background-color: #f8f9fa;
-    border-left: 4px solid #4285f4;
-    margin: 10px 0;
-    padding: 15px;
+    padding: 12px;
     border-radius: 8px;
-    font-size: 0.95em;
+    margin-bottom: 12px;
 }
 
 .thinking-header {
     display: flex;
     align-items: center;
-    margin-bottom: 10px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #e0e0e0;
+    color: #666;
+    margin-bottom: 8px;
+    font-weight: 500;
 }
 
-.thinking-icon {
-    background-color: #4285f4;
-    color: white;
-    padding: 8px;
-    border-radius: 50%;
-    margin-right: 10px;
-    width: 32px;
-    height: 32px;
+.thinking-header i {
+    margin-right: 8px;
+    color: #4a90e2;
+}
+
+.answer-section {
+    background-color: #fff;
+    padding: 12px;
+    border-radius: 8px;
+    border-left: 4px solid #4a90e2;
+    margin-top: 12px;
+    opacity: 0;
+    animation: fadeIn 0.5s ease-in forwards;
+}
+
+.answer-header {
     display: flex;
     align-items: center;
-    justify-content: center;
+    color: #4a90e2;
+    margin-bottom: 8px;
+    font-weight: 500;
 }
 
-.thinking-title {
-    color: #4285f4;
-    font-weight: 600;
-    font-size: 1.1em;
+.answer-header i {
+    margin-right: 8px;
 }
 
-.thinking-text {
-    color: #666;
+.answer-text {
     line-height: 1.6;
-    margin-left: 10px;
-    white-space: pre-wrap;
+    color: #333;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .final-answer {

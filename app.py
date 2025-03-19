@@ -535,7 +535,7 @@ def clear_history():
 logger = logging.getLogger(__name__)
 
 @app.route('/search', methods=['GET', 'POST'])
-async def search():
+def search():
     try:
         # 根據請求方法獲取查詢參數
         if request.method == 'POST':
@@ -557,8 +557,8 @@ async def search():
                 'error': '搜尋關鍵字不能為空'
             }), 400
         
-        # 調用搜索函數
-        result = await exa_search(query)
+        # 調用搜索函數 - 需要修改為同步方式
+        result = exa_search(query)  # 移除 await
         print(f"搜索結果: {result}")
         
         if result["success"]:
@@ -582,7 +582,7 @@ async def search():
             'error': f'搜尋處理失敗: {str(e)}'
         }), 500
 
-async def exa_search(query: str) -> dict:
+def exa_search(query: str) -> dict:
     """
     使用搜索 API 進行網路搜索
     

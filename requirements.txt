@@ -1,4 +1,4 @@
-flask
+flask[async]
 requests
 python-dotenv
 Werkzeug
@@ -12,3 +12,4 @@ autogen-agentchat
 autogen-core
 json-schema-to-pydantic
 hypercorn
+quart

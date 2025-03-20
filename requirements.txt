@@ -13,3 +13,4 @@ autogen-core
 json-schema-to-pydantic
 hypercorn
 quart
+opencc

@@ -500,7 +500,7 @@
                                         <div class="thinking-dot"></div>
                                         <div class="thinking-dot"></div>
                                     </div>
-                                    <div class="thinking-text">正在分析圖片...</div>
+                                    <div class="thinking-text">${currentImage ? '正在分析圖片...' : '正在思考中...'}</div>
                                     <div class="progress-bar">
                                         <div class="progress-bar-fill"></div>
                                     </div>
@@ -525,7 +525,7 @@
                                     <i class="fas fa-robot"></i>
                                 </div>
                                 <div class="message-content">
-                                    <div class="text markdown-content">${marked.parse(data.assistant_message.content)}</div>
+                                    <div class="text markdown-content">${marked.parse(data.assistant_message.content.replace(/\n{3,}/g, '\n'))}</div>
                                     <div class="timestamp">剛剛</div>
                                 </div>
                             </div>

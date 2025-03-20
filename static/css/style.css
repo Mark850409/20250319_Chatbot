@@ -19,13 +19,14 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Arial', sans-serif;
 }
 
 body {
     background-color: var(--background-color);
     color: var(--text-color);
     line-height: 1.6;
+    font-size: 16px;
 }
 
 .container {
@@ -488,6 +489,7 @@ header h1 {
     margin-bottom: 10px;
     color: #4a8eff;
     font-weight: 500;
+    gap: 8px;
 }
 
 .thinking-icon, .answer-icon {
@@ -498,11 +500,13 @@ header h1 {
 .thinking-title, .answer-title {
     color: #666;
     font-weight: 500;
+    margin-left: 8px;
 }
 
 /* 內容區域統一樣式 */
 .thinking-text, .answer-text {
-    font-family: monospace;
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: 500;
     color: #666;
     line-height: 1.6;
     white-space: pre-wrap;
@@ -934,58 +938,83 @@ header h1 {
 
 /* Markdown 內容樣式 */
 .markdown-content {
-    line-height: 1.6;
+    line-height: 1.5;
 }
 
 .markdown-content h1 {
-    font-size: 2em;
-    margin: 0.67em 0;
+    font-size: 1.8em;
+    margin: 0.3em 0 0.2em 0;
 }
 
 .markdown-content h2 {
-    font-size: 1.5em;
-    margin: 0.75em 0;
+    font-size: 1.4em;
+    margin: 0.3em 0 0.2em 0;
 }
 
 .markdown-content h3 {
-    font-size: 1.17em;
-    margin: 0.83em 0;
+    font-size: 1.1em;
+    margin: 0.2em 0 0.1em 0;
 }
 
 .markdown-content ul, 
 .markdown-content ol {
-    padding-left: 2em;
+    padding-left: 1.5em;
+    margin: 0.2em 0;
+}
+
+.markdown-content p {
+    margin: 0.2em 0;
 }
 
 .markdown-content code {
     background: #f4f4f4;
-    padding: 0.2em 0.4em;
+    padding: 0.1em 0.3em;
     border-radius: 3px;
+    font-size: 0.9em;
+    font-family: monospace;
 }
 
 .markdown-content pre {
     background: #f4f4f4;
-    padding: 1em;
+    padding: 0.8em;
     border-radius: 5px;
     overflow-x: auto;
+    margin: 0.3em 0;
+}
+
+.markdown-content pre code {
+    padding: 0;
+    background: none;
+}
+
+/* 工具名稱區塊 */
+.markdown-content pre code.language-tool {
+    color: #2563eb;
+    background: #eff6ff;
+}
+
+/* 參數區塊 */
+.markdown-content pre code.language-json {
+    color: #059669;
+    background: #ecfdf5;
 }
 
 .markdown-content blockquote {
     border-left: 4px solid #ddd;
-    padding-left: 1em;
-    margin-left: 0;
+    padding-left: 0.8em;
+    margin: 0.5em 0;
     color: #666;
 }
 
 .markdown-content table {
     border-collapse: collapse;
     width: 100%;
-    margin: 1em 0;
+    margin: 0.5em 0;
 }
 
 .markdown-content th,
 .markdown-content td {
     border: 1px solid #ddd;
-    padding: 8px;
+    padding: 6px;
     text-align: left;
 }

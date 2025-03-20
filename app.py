@@ -12,7 +12,8 @@ from exa_py import Exa
 import logging
 import re
 from urllib.parse import quote
-
+from opencc import OpenCC
+cc = OpenCC('s2t')  # 簡體轉繁體
 
 # 載入環境變數
 load_dotenv()
@@ -160,6 +161,7 @@ def call_mistral_api(messages):
         
         if response.status_code == 200:
             print(f"API回應: 狀態碼 {response.status_code}")
+            print(response.json())
             return response.json()["choices"][0]["message"]["content"]
         else:
             print(f"API錯誤: 狀態碼 {response.status_code}, 回應: {response.text}")
@@ -170,7 +172,8 @@ def call_mistral_api(messages):
 
 def call_jina_api(user_message, messages):
     headers = {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {os.getenv('JINA_API_KEY')}"
     }
     
     api_messages = []
@@ -244,17 +247,19 @@ def call_jina_api(user_message, messages):
                             if content:
                                 content = content.replace('<think>', '').replace('</think>', '').replace('\n\n', '')
                                 thinking_content += content
+                                traditional_think_text = cc.convert(thinking_content)
                                 yield {
-                                    "thinking": thinking_content,
+                                    "thinking": traditional_think_text,
                                     "answer": None
                                 }
                         elif msg_type == 'text':
                             if content:
                                 final_answer += content
+                                traditional_answer_text = cc.convert(final_answer)
                                 if json_response['choices'][0].get('finish_reason') == 'stop':
                                     yield {
-                                        "thinking": thinking_content,
-                                        "answer": final_answer.strip()
+                                        "thinking": traditional_think_text,
+                                        "answer": traditional_answer_text.strip()
                                     }
                                     
                 except Exception as e:
@@ -423,8 +428,11 @@ def chat():
             # 為存儲保存原始路徑
             image_path_for_storage = relative_path
             
-            # 添加到前端顯示消息
-            display_message = {"role": "user", "content": user_message, "image": relative_path.replace('static/', '')}
+            # 在 chat 函數中，設置 display_message
+            if 'image' in request.files and image_path:
+                display_message = {"role": "user", "content": user_message, "image": relative_path.replace('static/', '')}
+            else:
+                display_message = {"role": "user", "content": user_message}
             
         else:
             return jsonify({"error": "不支持的文件類型"}), 400
@@ -481,10 +489,11 @@ def chat():
         })
     else:
         response = call_mistral_api(api_messages_clean)
-        if not response:
-            response = "抱歉，我現在無法提供有效的回答。"
+        traditional_answer_text = cc.convert(response)
+        if not traditional_answer_text:
+            traditional_answer_text = "抱歉，我現在無法提供有效的回答。"
         
-        assistant_message = {"role": "assistant", "content": response}
+        assistant_message = {"role": "assistant", "content": traditional_answer_text}
         messages.append(assistant_message)
         
         # 保存對話到文件
@@ -638,6 +647,7 @@ def exa_search(query: str) -> dict:
             
             if data["status"] == "success":
                 messages = data["result"]["messages"]
+                
                 thinking_process = []
                 final_answer = ""
                 
@@ -654,15 +664,15 @@ def exa_search(query: str) -> dict:
                         tool_name = tool.get("name", "")
                         try:
                             args = json.loads(tool.get("arguments", "{}"))
-                            args_str = ", ".join(f"{k}={v}" for k, v in args.items())
+                            args_str = json.dumps(args, indent=2, ensure_ascii=False)
                             thinking_process.append({
                                 'type': 'thinking',
-                                'content': f"💭 調用工具：\n    {tool_name}({args_str})\n"
+                                'content': f"💭 調用工具：\n{tool_name}\n\n💡 參數：\n{args_str}\n"
                             })
                         except json.JSONDecodeError:
                             thinking_process.append({
                                 'type': 'thinking',
-                                'content': f"💭 調用工具：\n    {tool_name}\n"
+                                'content': f"💭 調用工具：\n```tool\n{tool_name}\n```\n"
                             })
                 
                 # 2. 提取最終回答
@@ -676,6 +686,7 @@ def exa_search(query: str) -> dict:
                 
                 if final_message:
                     final_answer = final_message["content"]
+                    final_answer = cc.convert(final_answer)
                     if "TERMINATE" in final_answer:
                         final_answer = final_answer.replace("TERMINATE.", "").strip()
                 

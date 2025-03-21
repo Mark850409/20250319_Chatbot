@@ -1018,3 +1018,21 @@ header h1 {
     padding: 6px;
     text-align: left;
 }
+
+.elapsed-time, .total-time {
+    font-weight: bold;
+    color: #4285f4;
+}
+
+.answer-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #4a8eff;
+    font-weight: 500;
+    margin-bottom: 10px;
+}
+
+.answer-header i {
+    margin-right: 4px;
+}

@@ -172,8 +172,7 @@ def call_mistral_api(messages):
 
 def call_jina_api(user_message, messages):
     headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {os.getenv('JINA_API_KEY')}"
+        "Content-Type": "application/json"
     }
     
     api_messages = []
@@ -566,16 +565,18 @@ def search():
                 'error': '搜尋關鍵字不能為空'
             }), 400
         
-        # 調用搜索函數 - 需要修改為同步方式
-        result = exa_search(query)  # 移除 await
-        print(f"搜索結果: {result}")
+        # 調用搜索函數
+        result = exa_search(query)
+        print(f"搜索結果: {result}")  # 添加日誌
         
         if result["success"]:
-            return jsonify({
+            response_data = {
                 'success': True,
                 'thinking_process': result['thinking_process'],
                 'answer': result['answer']
-            })
+            }
+            print(f"返回數據: {response_data}")  # 添加日誌
+            return jsonify(response_data)
         else:
             return jsonify({
                 'success': False,
@@ -623,7 +624,7 @@ def exa_search(query: str) -> dict:
         params = {
             "query": encoded_query,  # 使用編碼後的查詢字串
             "num_results": "1",      # 轉為字符串
-            "category": "web",
+            "category": "news",
             "search_type": "keyword"
         }
         
@@ -667,7 +668,7 @@ def exa_search(query: str) -> dict:
                             args_str = json.dumps(args, indent=2, ensure_ascii=False)
                             thinking_process.append({
                                 'type': 'thinking',
-                                'content': f"💭 調用工具：\n{tool_name}\n\n💡 參數：\n{args_str}\n"
+                                'content': f"💭 調用工具：\n```tool\n{tool_name}\n```\n\n💡 參數：\n```json\n{args_str}\n```\n"
                             })
                         except json.JSONDecodeError:
                             thinking_process.append({
@@ -676,21 +677,26 @@ def exa_search(query: str) -> dict:
                             })
                 
                 # 2. 提取最終回答
-                final_message = next(
-                    (msg for msg in messages 
-                     if msg["type"] == "TextMessage" and 
-                     msg["source"] == "analyze_agent" and
-                     msg.get("content")),
-                    None
-                )
+                final_messages = [
+                    msg for msg in messages 
+                    if msg["type"] == "TextMessage" and 
+                    msg["source"] == "assistant_agent" and
+                    msg.get("content")
+                ]
                 
-                if final_message:
+                # 取最後一條消息作為最終答案
+                if final_messages:
+                    final_message = final_messages[-1]
                     final_answer = final_message["content"]
                     final_answer = cc.convert(final_answer)
                     if "TERMINATE" in final_answer:
-                        final_answer = final_answer.replace("TERMINATE.", "").strip()
+                        final_answer = final_answer.replace("TERMINATE", "").strip()
+                else:
+                    # 如果沒有找到分析結果，返回提示信息
+                    final_answer = "抱歉，我無法找到相關的答案。"
                 
-                print("處理完成，返回結果")
+                print(f"最終回答: {final_answer}")  # 添加日誌
+                
                 return {
                     "success": True,
                     "thinking_process": thinking_process,

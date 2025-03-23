@@ -371,6 +371,71 @@ def stream_response():
     
     return Response(stream_with_context(generate()), mimetype='text/event-stream')
 
+def call_n8n_api(user_message):
+    """呼叫 n8n API 進行回應"""
+    try:
+        # 對查詢進行 URL 編碼
+        encoded_query = quote(user_message)
+        url = f"https://mynocodbapi.zeabur.app/n8n?query={encoded_query}&detail=false"
+        
+        response = requests.get(url, headers={"accept": "application/json"})
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data["status"] == "success":
+                messages = data["result"]["messages"]
+                thinking_process = ""
+                final_answer = ""
+                
+                # 處理思考過程
+                tool_call = next(
+                    (msg for msg in messages 
+                     if msg["type"] == "ToolCallRequestEvent" and 
+                     msg["source"] == "assistant_agent"),
+                    None
+                )
+                
+                if tool_call and tool_call.get("content"):
+                    for tool in tool_call["content"]:
+                        tool_name = tool.get("name", "")
+                        try:
+                            args = json.loads(tool.get("arguments", "{}"))
+                            args_str = json.dumps(args, indent=2, ensure_ascii=False)
+                            thinking_process += f"💭 調用工具：\n```tool\n{tool_name}\n```\n\n💡 參數：\n```json\n{args_str}\n```\n"
+                        except json.JSONDecodeError:
+                            thinking_process += f"💭 調用工具：\n```tool\n{tool_name}\n```\n"
+                
+                # 從最後一條 TextMessage 中獲取回應
+                final_messages = [
+                    msg for msg in messages 
+                    if msg["type"] == "TextMessage" and 
+                    msg["source"] == "assistant_agent" and
+                    msg.get("content")
+                ]
+                
+                if final_messages:
+                    final_message = final_messages[-1]["content"]
+                    # 移除 TERMINATE
+                    final_message = final_message.replace("TERMINATE", "").strip()
+                    final_answer = cc.convert(final_message)  # 轉換為繁體中文
+                    
+                    # 返回包含思考過程和最終答案的字典
+                    return {
+                        "thinking": thinking_process,
+                        "answer": final_answer
+                    }
+                
+        return {
+            "thinking": "處理請求時發生錯誤",
+            "answer": "抱歉，我現在無法提供有效的回答。"
+        }
+    except Exception as e:
+        print(f"n8n API 請求錯誤: {str(e)}")
+        return {
+            "thinking": "處理請求時發生錯誤",
+            "answer": f"請求錯誤: {str(e)}"
+        }
+
 @app.route('/chat', methods=['POST'])
 def chat():
     user_message = request.form.get('message', '')
@@ -487,12 +552,25 @@ def chat():
             "messages": api_messages_clean
         })
     else:
-        response = call_mistral_api(api_messages_clean)
-        traditional_answer_text = cc.convert(response)
+        # 如果是純文字訊息，使用 n8n API
+        if isinstance(api_message["content"], str):
+            response = call_n8n_api(user_message)
+            thinking_process = response["thinking"]
+            answer = response["answer"]
+        else:
+            # 如果包含圖片，使用原有的 Mistral API
+            answer = call_mistral_api(api_messages_clean)
+            thinking_process = ""
+            
+        traditional_answer_text = cc.convert(answer)
         if not traditional_answer_text:
             traditional_answer_text = "抱歉，我現在無法提供有效的回答。"
         
-        assistant_message = {"role": "assistant", "content": traditional_answer_text}
+        assistant_message = {
+            "role": "assistant", 
+            "content": traditional_answer_text,
+            "thinking": thinking_process
+        }
         messages.append(assistant_message)
         
         # 保存對話到文件

@@ -428,9 +428,10 @@
                     method: 'POST',
                     body: formData
                 });
+
                 
                 const data = await response.json();
-                
+                console.log('聊天回應數據:', data);  // 添加日誌
                 if (data.error) {
                     console.error(data.error);
                     return;
@@ -579,7 +580,18 @@
                                     <i class="fas fa-robot"></i>
                                 </div>
                                 <div class="message-content">
-                                    <div class="text markdown-content">${marked.parse(data.assistant_message.content.replace(/\n{3,}/g, '\n'))}</div>
+                                    ${data.assistant_message.thinking ? `
+                                        <div class="thinking-process">
+                                            <div class="thinking-header">
+                                                <div class="thinking-icon">
+                                                    <i class="fas fa-brain"></i>
+                                                </div>
+                                                <div class="thinking-title">推理過程</div>
+                                            </div>
+                                            <div class="thinking-text markdown-content">${marked.parse(data.assistant_message.thinking.replace(/\n{2,}/g, '\n'))}</div>
+                                        </div>
+                                    ` : ''}
+                                    <div class="text markdown-content">${marked.parse(data.assistant_message.content.replace(/\n{2,}/g, '\n'))}</div>
                                     <div class="timestamp">剛剛</div>
                                 </div>
                             </div>

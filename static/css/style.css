@@ -135,8 +135,8 @@ header h1 {
 }
 
 .avatar {
-    width: 40px;
-    height: 40px;
+    width: 64px;
+    height: 64px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -168,9 +168,9 @@ header h1 {
     border-top-left-radius: 0;
 }
 
-.message-content .text {
+/* .message-content .text {
     white-space: pre-line;
-}
+} */
 
 .timestamp {
     font-size: 0.7rem;
@@ -498,7 +498,7 @@ header h1 {
 }
 
 .thinking-title, .answer-title {
-    color: #666;
+    color: #4a8eff;
     font-weight: 500;
     margin-left: 8px;
 }
@@ -509,7 +509,6 @@ header h1 {
     font-weight: 500;
     color: #666;
     line-height: 1.6;
-    white-space: pre-wrap;
     margin: 8px 0;
     background: #fff;
     padding: 12px;
@@ -974,49 +973,81 @@ header h1 {
     font-family: monospace;
 }
 
-.markdown-content pre {
-    background: #f4f4f4;
-    padding: 0.8em;
-    border-radius: 5px;
-    overflow-x: auto;
-    margin: 0.3em 0;
-}
-
-.markdown-content pre code {
+/* 工具調用區塊的基本樣式 */
+.thinking-process .markdown-content pre {
+    background: transparent;
     padding: 0;
-    background: none;
+    margin: 8px 0;
 }
 
-/* 工具名稱區塊 */
-.markdown-content pre code.language-tool {
+/* 工具名稱區塊 - 使用藍色系 */
+.thinking-process .markdown-content pre code.language-tool,
+.thinking-text pre code.language-tool {
     color: #2563eb;
     background: #eff6ff;
-}
-
-/* 參數區塊 */
-.markdown-content pre code.language-json {
-    color: #059669;
-    background: #ecfdf5;
-}
-
-.markdown-content blockquote {
-    border-left: 4px solid #ddd;
-    padding-left: 0.8em;
-    margin: 0.5em 0;
-    color: #666;
-}
-
-.markdown-content table {
-    border-collapse: collapse;
+    display: block;
     width: 100%;
-    margin: 0.5em 0;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border-left: 4px solid #2563eb;
+    margin: 4px 0;
+    font-family: ui-monospace, monospace;
+    font-size: 0.9em;
 }
 
-.markdown-content th,
-.markdown-content td {
-    border: 1px solid #ddd;
-    padding: 6px;
-    text-align: left;
+/* 參數區塊 - 使用綠色系 */
+.thinking-process .markdown-content pre code.language-json,
+.thinking-text pre code.language-json {
+    color: #0f766e;
+    background: #f0fdfa;
+    display: block;
+    width: 100%;
+    padding: 12px;
+    border-radius: 6px;
+    border-left: 4px solid #0f766e;
+    margin: 8px 0;
+    font-family: ui-monospace, monospace;
+    font-size: 0.9em;
+}
+
+/* 移除之前的標籤樣式 */
+.thinking-process .markdown-content pre code.language-tool::before,
+.thinking-process .markdown-content pre code.language-json::before {
+    display: none;
+}
+
+/* 調整思考過程容器樣式 */
+.thinking-process {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 15px;
+    margin: 10px 0;
+}
+
+/* 調整思考文字樣式 */
+.thinking-process .thinking-text {
+    color: #374151;
+    line-height: 1.6;
+    padding: 8px 12px;
+}
+
+/* 移除多餘的邊框和陰影 */
+.thinking-process .markdown-content pre code {
+    box-shadow: none;
+}
+
+/* 調整間距 */
+.thinking-process .markdown-content pre + pre {
+    margin-top: 8px;
+}
+
+/* 確保表情符號和圖示的樣式正確顯示 */
+.thinking-text pre:first-child {
+    margin-top: 0;
+}
+
+.thinking-text pre:last-child {
+    margin-bottom: 0;
 }
 
 .elapsed-time, .total-time {
@@ -1035,4 +1066,33 @@ header h1 {
 
 .answer-header i {
     margin-right: 4px;
+}
+
+/* 思考過程中的工具調用區塊容器 */
+.thinking-text pre {
+    background: transparent;
+    padding: 0;
+    margin: 12px 0;
+}
+
+/* 調整工具圖示和參數標題的樣式 */
+.thinking-text .tool-icon,
+.thinking-text .params-icon {
+    display: inline-block;
+    margin-right: 6px;
+    opacity: 0.8;
+}
+
+/* 💭 和 💡 表情符號的樣式 */
+.thinking-text pre:first-child {
+    margin-top: 0;
+}
+
+.thinking-text pre:last-child {
+    margin-bottom: 0;
+}
+
+/* 確保 markdown 內容中的程式碼區塊有適當的間距 */
+.markdown-content pre + pre {
+    margin-top: 8px;
 }

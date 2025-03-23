@@ -1,4 +1,4 @@
-# Mistral AI 聊天應用
+# ChatBOT聊天機器人助手
 
 這是一個基於 Flask 的聊天應用，使用 Mistral AI 的模型提供智能對話功能，支援文字和圖片互動。
 
@@ -11,6 +11,144 @@
 - 儲存對話歷史記錄到本地
 - 查看和恢復歷史對話
 - 美觀的使用者介面，回應式設計
+
+## `Make`&`n8n`自動化工作流程
+
+本專案包含兩個主要工作流程：
+
+### 1. OneDrive資料同步工作流程
+
+```mermaid
+graph LR
+    A[標案上傳器] --> B[標案ID儲存]
+    B --> C[滙入向量資料庫]
+    C --> D[取得目錄]
+    D --> E[下載處理的檔案]
+    E --> F[轉換為EXCEL]
+    F --> G[資料整合]
+    G --> H[資料拆分]
+    H --> I[寫入向量資料庫]
+    I --> J[資料整入器]
+    J --> K[文本切分]
+    K --> L[向量嵌入]
+    
+    style A fill:#4B89DC
+    style B fill:#967ADC
+    style C fill:#37BC9B
+    style D fill:#4B89DC
+    style E fill:#4B89DC
+    style F fill:#3BAFDA
+    style G fill:#DA4453
+    style H fill:#F6BB42
+    style I fill:#37BC9B
+    style J fill:#F6BB42
+    style K fill:#434A54
+    style L fill:#967ADC
+```
+
+### 2. LINE聊天機器人工作流程
+
+```mermaid
+graph LR
+    A[接收make觸發] --> B[儲存使用者提問]
+    B --> C[獨立產生sessionId]
+    C --> D[超級智慧機器人]
+    D --> E[回傳到LINE]
+    
+    D --> F[向量資料庫-LINE]
+    D --> G[Groq Chat Model]
+    D --> H[暫存記憶體]
+    D --> I[tavily工具呼叫]
+    D --> J[tavily工具使用]
+    
+    F --> K[向量嵌入-LINE]
+    K --> L[向量嵌入]
+    G --> E
+    
+    style A fill:#4B89DC
+    style B fill:#967ADC
+    style C fill:#F6BB42
+    style D fill:#37BC9B
+    style E fill:#4B89DC
+    style F fill:#3BAFDA
+    style G fill:#DA4453
+    style H fill:#967ADC
+    style I fill:#434A54
+    style J fill:#434A54
+    style K fill:#37BC9B
+    style L fill:#967ADC
+```
+
+這兩個工作流程分別處理：
+
+1. **OneDrive資料同步工作流程**
+   - 自動化資料擷取和處理
+   - 文件格式轉換和標準化
+   - 向量資料庫整合
+   - 資料分割和嵌入處理
+
+2. **LINE聊天機器人工作流程**
+   - 使用者互動處理
+   - 智能對話生成
+   - 向量資料庫查詢和整合
+   - 多工具協同運作
+
+## AI 智慧聊天應用機器人-系統流程圖
+
+```mermaid
+graph TD
+    A[用戶界面] --> B{功能選擇}
+    B -->|文字對話| C[文字處理模組]
+    B -->|圖片上傳| D[圖片處理模組]
+    B -->|查看歷史| E[歷史記錄模組]
+    
+    C --> F[AI模型處理]
+    D --> G[圖片優化]
+    G --> F
+    
+    F -->|深度推理| H[推理處理]
+    F -->|一般回應| I[回應生成]
+    
+    H --> J[顯示結果]
+    I --> J
+    
+    E --> K[本地存儲]
+    K --> L[顯示歷史對話]
+```
+
+### 主要流程說明
+
+1. **用戶界面層**
+   - 提供文字輸入介面
+   - 支援圖片上傳功能
+   - 歷史記錄查看選項
+
+2. **處理層**
+   - 文字處理：清理和格式化用戶輸入
+   - 圖片處理：調整大小和優化品質
+   - AI模型整合：
+     - 串接`Mistral AI`進行圖片分析
+     - 串接`node deepresearch`進行深度推理
+     - 串接`MCP Server`相關應用，如`Tavily`AI即時網頁搜尋
+3. **存儲層**
+   - 本地對話歷史記錄
+   - 圖片暫存管理
+   - 配置文件管理
+
+### 資料流程
+
+```mermaid
+graph LR
+    A[用戶輸入] --> B[前處理]
+    B --> C{輸入類型}
+    C -->|文字| D[文字處理]
+    C -->|圖片| E[圖片處理]
+    D --> F[AI處理]
+    E --> F
+    F --> G[回應生成]
+    G --> H[存儲]
+    H --> I[顯示]
+``` 
 
 ## 安裝
 
@@ -48,7 +186,7 @@ python run.py
 ## 目錄結構
 
 ```
-mistral-flask-app/
+deep-reasearch-chatbot/
 ├── app.py            # Flask應用主文件
 ├── run.py            # 啟動腳本
 ├── config.py         # 配置文件
@@ -71,6 +209,9 @@ mistral-flask-app/
 3. 上傳圖片時可以選擇圖片尺寸（原始、小、中、大）和品質（低、中、高）
 4. 點擊"歷史記錄"按鈕查看過去的對話
 5. 點擊"新對話"按鈕開始一個新的對話
+6. 點擊"啟用深度推理"即可進行深度推理分析
+7. 點擊"啟用搜尋模式"即可進行即時搜尋結果
+8. 直接提問則可進行RAG知識庫進行問答
 
 ## 注意事項
 
@@ -79,4 +220,4 @@ mistral-flask-app/
 
 ## 許可證
 
-本項目採用MIT許可證。詳情請見LICENSE文件。 
+本項目採用MIT許可證。詳情請見LICENSE文件。

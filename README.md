@@ -14,6 +14,12 @@
 
 ## `Make`&`n8n`自動化工作流程
 
+![alt text](https://raw.githubusercontent.com/Mark850409/20250319_Chatbot/refs/heads/master/static/img/MBTI_scrapy.png)
+
+![alt text](https://raw.githubusercontent.com/Mark850409/20250319_Chatbot/refs/heads/master/static/img/MBTI_LINE.png)
+
+![alt text](https://raw.githubusercontent.com/Mark850409/20250319_Chatbot/refs/heads/master/static/img/Make.png)
+
 本專案包含兩個主要工作流程：
 
 ### 1. OneDrive資料同步工作流程
